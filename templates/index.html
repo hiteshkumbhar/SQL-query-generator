@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Language → SQL</title>
+    <meta name="description" content="Production-quality Text-to-SQL query generator powered by Google Gemini API. Convert natural language queries to valid SQL.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-wrapper">
+                <div class="brand-icon-box">
+<svg width="100px" height="100px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <title>database-filled</title> <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"> <g id="icon" fill="#ffffff" transform="translate(85.333333, 64.000000)"> <path d="M341.333333,234.666667 L341.333333,298.666667 C341.333333,345.794965 264.923264,384 170.666667,384 C78.5046604,384 3.40481618,347.4741 0.11255743,301.795012 L1.42108547e-14,298.666667 L1.42108547e-14,234.666667 L0.11255743,237.795012 C3.40481618,283.4741 78.5046604,320 170.666667,320 C264.923264,320 341.333333,281.794965 341.333333,234.666667 L341.333333,234.666667 Z M0.11255743,131.128346 C3.40481618,176.807434 78.5046604,213.333333 170.666667,213.333333 C264.923264,213.333333 341.333333,175.128299 341.333333,128 L341.333333,128 L341.333333,192 L341.310469,193.411143 C339.803347,239.888579 263.980698,277.333333 170.666667,277.333333 C78.5046604,277.333333 3.40481618,240.807434 0.11255743,195.128346 L0.11255743,195.128346 L1.42108547e-14,192 L1.42108547e-14,128 Z M170.666667,1.42108547e-14 C262.828673,1.42108547e-14 337.928517,36.5258998 341.220776,82.2049877 L341.333333,85.3333333 L341.310469,86.744476 C339.803347,133.221912 263.980698,170.666667 170.666667,170.666667 C78.5046604,170.666667 3.40481618,134.140767 0.11255743,88.4616789 L0.11255743,88.4616789 L1.42108547e-14,85.3333333 C1.42108547e-14,38.2050347 76.4100694,1.42108547e-14 170.666667,1.42108547e-14 Z" id="Combined-Shape"> </path> </g> </g> </g></svg>                </div>
+                <div>
+                    <h1 class="brand-title">Natural Language <span class="brand-arrow">→</span> SQL</h1>
+                    <p class="brand-subtitle">Text-to-SQL query engine </p>
+                </div>
+            </div>
+            <div class="header-actions">
+             
+                <button type="button" id="open-history-btn" class="icon-btn" title="View query history">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v5h5"/>
+                        <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+                        <path d="M12 7v5l4 2"/>
+                    </svg>
+                    History
+                    <span id="history-counter" class="history-badge">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-container">
+        <!-- Configuration & Schema Controls -->
+        <section class="glass-card">
+            <div class="config-grid">
+                <div class="field-group">
+                    <label class="field-label" for="schema-template-select">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22f5d0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" > <rect x="3" y="4" width="18" height="16" rx="2"></rect> <line x1="3" y1="9" x2="21" y2="9"></line> <line x1="9" y1="9" x2="9" y2="20"></line> <line x1="15" y1="9" x2="15" y2="20"></line> </svg>
+                        Schema Template
+                    </label>
+                    <select id="schema-template-select" class="styled-select">
+                        <option value="ecommerce" selected>E-Commerce (Customers, Orders, Products)</option>
+                        <option value="saas">SaaS Analytics (Users, Subscriptions, Events)</option>
+                        <option value="healthcare">Healthcare & Clinics (Patients, Appointments, Doctors)</option>
+                        <option value="custom">Custom Schema Definition</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label class="field-label" for="dialect-select">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22f5d0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" > <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse> <path d="M4 5v7c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path> <path d="M4 12v7c0 1.66 3.58 3 8 3s8-1.34 8-3v-7"></path> </svg>
+                        Target SQL Dialect
+                    </label>
+                    <select id="dialect-select" class="styled-select">
+                        <option value="postgresql" selected>PostgreSQL (Standard)</option>
+                        <option value="mysql">MySQL</option>
+                        <option value="sqlite">SQLite</option>
+                        <option value="bigquery">Google BigQuery</option>
+                        <option value="snowflake">Snowflake SQL</option>
+                        <option value="sqlserver">Microsoft SQL Server (T-SQL)</option>
+                    </select>
+                </div>
+
+                <button type="button" id="toggle-schema-btn" class="btn-toggle-schema">
+                   <svg width="18px" height="18px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M7.90451 6.92144C8.41341 6.45495 8.44779 5.66424 7.9813 5.15534C7.51481 4.64645 6.7241 4.61207 6.2152 5.07856L7.90451 6.92144ZM1.46194 11.1314L2.3066 12.0529L2.3066 12.0529L1.46194 11.1314ZM1.46194 11.8686L2.3066 10.9471L2.3066 10.9471L1.46194 11.8686ZM6.2152 17.9214C6.7241 18.3879 7.51481 18.3536 7.9813 17.8447C8.44779 17.3358 8.41341 16.545 7.90451 16.0786L6.2152 17.9214ZM6.2152 5.07856L0.617287 10.21L2.3066 12.0529L7.90451 6.92144L6.2152 5.07856ZM0.617287 12.79L6.2152 17.9214L7.90451 16.0786L2.3066 10.9471L0.617287 12.79ZM0.617287 10.21C-0.139356 10.9036 -0.139356 12.0964 0.617287 12.79L2.3066 10.9471C2.63087 11.2444 2.63087 11.7556 2.3066 12.0529L0.617287 10.21Z" fill="#22f5d0"></path> <path d="M16.0557 16.0786C15.5468 16.545 15.5125 17.3358 15.9789 17.8447C16.4454 18.3536 17.2361 18.3879 17.745 17.9214L16.0557 16.0786ZM22.4983 11.8686L21.6537 10.9471L21.6537 10.9471L22.4983 11.8686ZM22.4983 11.1314L21.6537 12.0529L21.6537 12.0529L22.4983 11.1314ZM17.745 5.07856C17.2361 4.61207 16.4454 4.64645 15.979 5.15534C15.5125 5.66424 15.5468 6.45495 16.0557 6.92144L17.745 5.07856ZM17.745 17.9214L23.343 12.79L21.6537 10.9471L16.0557 16.0786L17.745 17.9214ZM23.343 10.21L17.745 5.07856L16.0557 6.92144L21.6537 12.0529L23.343 10.21ZM23.343 12.79C24.0996 12.0964 24.0996 10.9036 23.343 10.21L21.6537 12.0529C21.3294 11.7556 21.3294 11.2444 21.6537 10.9471L23.343 12.79Z" fill="#22f5d0"></path> <path d="M15.2127 3.80317C15.3801 3.13343 14.9729 2.45476 14.3032 2.28732C13.6334 2.11989 12.9548 2.52709 12.7873 3.19683L15.2127 3.80317ZM8.78732 19.1968C8.61989 19.8666 9.02709 20.5452 9.69683 20.7127C10.3666 20.8801 11.0452 20.4729 11.2127 19.8032L8.78732 19.1968ZM12.7873 3.19683L8.78732 19.1968L11.2127 19.8032L15.2127 3.80317L12.7873 3.19683Z" fill="#22f5d0"></path> </g></svg> <polyline points="8 4 3 12 8 20"></polyline> <polyline points="16 4 21 12 16 20"></polyline> <line x1="14" y1="3" x2="10" y2="21"></line> </svg>
+                    <span>View / Edit Schema</span>
+                </button>
+            </div>
+
+            <!-- Collapsible Schema Editor -->
+            <div id="schema-panel" class="schema-panel">
+                <div class="schema-header-row">
+                    <span class="schema-desc">Gemini uses this schema to map tables, relations, and columns to valid SQL.</span>
+                    <span id="schema-line-count" class="shortcut-pill">0 lines</span>
+                </div>
+                <textarea id="schema-editor" class="schema-textarea" rows="11" spellcheck="false"></textarea>
+            </div>
+        </section>
+
+        <!-- Prompt Query Input Card -->
+        <section class="glass-card">
+            <div class="input-header-row">
+                <label for="prompt-input" class="field-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Describe what you want to query in plain English
+                </label>
+                <span class="shortcut-pill">Press Ctrl + Enter to run</span>
+            </div>
+
+            <textarea 
+                id="prompt-input" 
+                class="prompt-textarea" 
+                placeholder="e.g. Find the top 5 customers by total order amount in 2025, including their email and city..."
+            ></textarea>
+
+            <div class="input-footer">
+                <span id="char-counter" class="char-counter">0 / 1000 characters</span>
+                <button type="button" id="generate-btn" class="btn-generate">
+                    <span class="btn-spinner"></span>
+                    <svg class="btn-icon-sparkle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275 1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                    </svg>
+                    <span id="btn-label">Generate SQL</span>
+                </button>
+            </div>
+
+            <!-- Suggestion Chips Container -->
+            <div class="suggestions-panel">
+                <span class="suggestions-title">Example prompts for this schema:</span>
+                <div id="chips-container" class="chips-wrapper">
+                    <!-- Populated dynamically based on chosen template -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Error Card -->
+        <div id="error-card" class="error-alert">
+            <svg class="error-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" x2="12" y1="8" y2="12"/>
+                <line x1="12" x2="12.01" y1="16" y2="16"/>
+            </svg>
+            <div>
+                <strong style="display:block; margin-bottom: 2px;">Execution Error</strong>
+                <span id="error-message-text">Failed to process request.</span>
+            </div>
+        </div>
+
+        <!-- Generated Result Card -->
+        <section id="result-card" class="glass-card result-card">
+            <div class="result-top-bar">
+                <div class="result-meta-tags">
+                    <span id="result-dialect-tag" class="tag-dialect">POSTGRESQL</span>
+                    <span id="result-tables-tag" class="tag-tables">Tables: customers, orders</span>
+                </div>
+                <div class="result-actions-row">
+                    <button type="button" id="copy-sql-btn" class="btn-copy">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                        </svg>
+                        <span id="copy-btn-text">Copy SQL</span>
+                    </button>
+                    <button type="button" id="download-sql-btn" class="btn-download" title="Download query as .sql file">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" x2="12" y1="15" y2="3"/>
+                        </svg>
+                        Download
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code block -->
+            <div class="sql-container">
+                <pre><code id="sql-display" class="sql-code"></code></pre>
+            </div>
+
+            <!-- Explanation & Details -->
+            <div class="explanation-panel">
+                <div class="explanation-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4"/>
+                        <path d="M12 8h.01"/>
+                    </svg>
+                    Query Logic & Breakdown
+                </div>
+                <p id="explanation-text" class="explanation-text"></p>
+            </div>
+        </section>
+    </main>
+
+    <!-- History Modal -->
+    <div id="history-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v5h5"/>
+                        <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+                        <path d="M12 7v5l4 2"/>
+                    </svg>
+                    Query History
+                </h3>
+                <button type="button" id="close-history-btn" class="icon-btn">&times;</button>
+            </div>
+            <div id="history-list" class="modal-body">
+                <p class="empty-history-text">No previous queries generated yet.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="clear-history-btn" class="icon-btn" style="color: #f87171;">
+                    Clear All History
+                </button>
+                <button type="button" id="close-modal-bottom-btn" class="icon-btn">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Native JavaScript Controller (No frameworks, pure standard APIs) -->
+    <script>
+        // Schema Templates Preset Data
+        const SCHEMA_TEMPLATES = {
+            ecommerce: {
+                name: "E-Commerce",
+                schema: `Table: customers
+Columns:
+- id INTEGER PRIMARY KEY
+- name VARCHAR
+- email VARCHAR
+- city VARCHAR
+- state VARCHAR
+- created_at TIMESTAMP
+
+Table: orders
+Columns:
+- id INTEGER PRIMARY KEY
+- customer_id INTEGER (Foreign Key -> customers.id)
+- order_date TIMESTAMP
+- total_amount DECIMAL
+- status VARCHAR
+
+Table: products
+Columns:
+- id INTEGER PRIMARY KEY
+- name VARCHAR
+- category VARCHAR
+- price DECIMAL
+
+Table: order_items
+Columns:
+- id INTEGER PRIMARY KEY
+- order_id INTEGER (Foreign Key -> orders.id)
+- product_id INTEGER (Foreign Key -> products.id)
+- quantity INTEGER
+- unit_price DECIMAL
+
+Relationships:
+- customers.id -> orders.customer_id
+- orders.id -> order_items.order_id
+- products.id -> order_items.product_id`,
+                suggestions: [
+                    "Top 10 customers by total spend with email and city",
+                    "Insert a new customer named 'John Doe' with email 'john@example.com' from 'Seattle'",
+                    "Update status of orders placed before 2025 to 'archived'",
+                    "Delete all order items where quantity is 0",
+                    "Add a new column discount_percent DECIMAL(5,2) to orders table",
+                    "Create an index on orders(customer_id, order_date)"
+                ]
+            },
+            saas: {
+                name: "SaaS Analytics",
+                schema: `Table: accounts
+Columns:
+- id INTEGER PRIMARY KEY
+- organization_name VARCHAR
+- plan_tier VARCHAR (free, pro, enterprise)
+- created_at TIMESTAMP
+
+Table: users
+Columns:
+- id INTEGER PRIMARY KEY
+- account_id INTEGER (Foreign Key -> accounts.id)
+- email VARCHAR
+- role VARCHAR (admin, member, billing)
+- last_login_at TIMESTAMP
+
+Table: subscriptions
+Columns:
+- id INTEGER PRIMARY KEY
+- account_id INTEGER (Foreign Key -> accounts.id)
+- mrr_amount DECIMAL
+- status VARCHAR (active, past_due, canceled)
+- renews_at TIMESTAMP
+
+Table: usage_events
+Columns:
+- id INTEGER PRIMARY KEY
+- account_id INTEGER (Foreign Key -> accounts.id)
+- event_name VARCHAR
+- event_count INTEGER
+- recorded_at TIMESTAMP`,
+                suggestions: [
+                    "Active enterprise accounts with MRR above $1,000",
+                    "Insert a new user with email 'alex@startup.io' and role 'admin' for account ID 12",
+                    "Update plan_tier to 'enterprise' for account ID 5",
+                    "Delete canceled subscriptions older than 180 days",
+                    "Create table audit_logs with id, user_id, action, timestamp"
+                ]
+            },
+            healthcare: {
+                name: "Healthcare & Clinics",
+                schema: `Table: patients
+Columns:
+- id INTEGER PRIMARY KEY
+- first_name VARCHAR
+- last_name VARCHAR
+- birth_date DATE
+- gender VARCHAR
+- insurance_provider VARCHAR
+
+Table: doctors
+Columns:
+- id INTEGER PRIMARY KEY
+- full_name VARCHAR
+- specialty VARCHAR
+- department VARCHAR
+
+Table: appointments
+Columns:
+- id INTEGER PRIMARY KEY
+- patient_id INTEGER (Foreign Key -> patients.id)
+- doctor_id INTEGER (Foreign Key -> doctors.id)
+- appointment_date TIMESTAMP
+- status VARCHAR (completed, scheduled, no_show)
+- reason VARCHAR`,
+                suggestions: [
+                    "List all appointments scheduled for Dr. Smith this month",
+                    "Insert a new appointment for patient ID 4 with doctor ID 2 tomorrow at 9 AM",
+                    "Update appointment status to 'completed' for appointment ID 204",
+                    "Delete all no-show appointments older than 2 years",
+                    "Alter table patients add column emergency_contact VARCHAR(100)"
+                ]
+            },
+            custom: {
+                name: "Custom Schema",
+                schema: `Table: my_table\nColumns:\n- id INTEGER PRIMARY KEY\n- title VARCHAR\n- created_at TIMESTAMP`,
+                suggestions: [
+                    "Select all rows ordered by created_at descending",
+                    "Insert a record with title 'Project Alpha'",
+                    "Delete rows where title is null",
+                    "Create table user_settings (user_id INT PRIMARY KEY, theme VARCHAR(20))"
+                ]
+            }
+        };
+
+        // DOM Elements
+        const schemaTemplateSelect = document.getElementById('schema-template-select');
+        const dialectSelect = document.getElementById('dialect-select');
+        const toggleSchemaBtn = document.getElementById('toggle-schema-btn');
+        const schemaPanel = document.getElementById('schema-panel');
+        const schemaEditor = document.getElementById('schema-editor');
+        const schemaLineCount = document.getElementById('schema-line-count');
+        const promptInput = document.getElementById('prompt-input');
+        const charCounter = document.getElementById('char-counter');
+        const generateBtn = document.getElementById('generate-btn');
+        const btnLabel = document.getElementById('btn-label');
+        const chipsContainer = document.getElementById('chips-container');
+        const errorCard = document.getElementById('error-card');
+        const errorMessageText = document.getElementById('error-message-text');
+        const resultCard = document.getElementById('result-card');
+        const resultDialectTag = document.getElementById('result-dialect-tag');
+        const resultTablesTag = document.getElementById('result-tables-tag');
+        const sqlDisplay = document.getElementById('sql-display');
+        const copySqlBtn = document.getElementById('copy-sql-btn');
+        const copyBtnText = document.getElementById('copy-btn-text');
+        const downloadSqlBtn = document.getElementById('download-sql-btn');
+        const explanationText = document.getElementById('explanation-text');
+        const openHistoryBtn = document.getElementById('open-history-btn');
+        const closeHistoryBtn = document.getElementById('close-history-btn');
+        const closeModalBottomBtn = document.getElementById('close-modal-bottom-btn');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const historyModal = document.getElementById('history-modal');
+        const historyList = document.getElementById('history-list');
+        const historyCounter = document.getElementById('history-counter');
+
+        let rawSQL = "";
+        let history = [];
+
+        // Load History from localStorage
+        try {
+            const saved = localStorage.getItem('nl_to_sql_history');
+            if (saved) {
+                history = JSON.parse(saved);
+                updateHistoryCount();
+            }
+        } catch (e) {}
+
+        function saveHistory() {
+            try {
+                localStorage.setItem('nl_to_sql_history', JSON.stringify(history));
+                updateHistoryCount();
+            } catch (e) {}
+        }
+
+        function updateHistoryCount() {
+            historyCounter.textContent = history.length;
+        }
+
+        // Initialize Schema & Suggestions
+        function applyTemplate(templateKey) {
+            const tpl = SCHEMA_TEMPLATES[templateKey] || SCHEMA_TEMPLATES.ecommerce;
+            schemaEditor.value = tpl.schema;
+            updateLineCount();
+
+            // Populate Chips
+            chipsContainer.innerHTML = '';
+            tpl.suggestions.forEach(suggestion => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'chip-btn';
+                chip.textContent = suggestion;
+                chip.addEventListener('click', () => {
+                    promptInput.value = suggestion;
+                    updateCharCounter();
+                    promptInput.focus();
+                });
+                chipsContainer.appendChild(chip);
+            });
+        }
+
+        function updateLineCount() {
+            const lines = schemaEditor.value.split('\n').length;
+            schemaLineCount.textContent = `${lines} line${lines === 1 ? '' : 's'}`;
+        }
+
+        function updateCharCounter() {
+            const count = promptInput.value.length;
+            charCounter.textContent = `${count} / 1000 characters`;
+        }
+
+        schemaTemplateSelect.addEventListener('change', (e) => {
+            applyTemplate(e.target.value);
+        });
+
+        toggleSchemaBtn.addEventListener('click', () => {
+            schemaPanel.classList.toggle('active');
+            const isActive = schemaPanel.classList.contains('active');
+            toggleSchemaBtn.querySelector('span').textContent = isActive ? 'Hide Schema' : 'View / Edit Schema';
+        });
+
+        schemaEditor.addEventListener('input', updateLineCount);
+        promptInput.addEventListener('input', updateCharCounter);
+
+        // Keyboard Shortcut: Ctrl + Enter
+        promptInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                generateSQL();
+            }
+        });
+
+        // Simple SQL Syntax Highlighter (Zero External Libs)
+        function highlightSQL(sql) {
+            const keywords = [
+                'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 
+                'OUTER JOIN', 'FULL JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 
+                'OFFSET', 'AS', 'AND', 'OR', 'NOT', 'IN', 'IS', 'NULL', 'LIKE', 'ILIKE', 
+                'BETWEEN', 'EXISTS', 'DISTINCT', 'UNION', 'ALL', 'CASE', 'WHEN', 'THEN', 
+                'ELSE', 'END', 'ASC', 'DESC', 'WITH', 'OVER', 'PARTITION BY',
+                'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE', 'TABLE', 
+                'ALTER', 'ADD', 'DROP', 'TRUNCATE', 'RENAME', 'COLUMN', 'INDEX', 'VIEW',
+                'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES', 'DEFAULT', 'CHECK', 'UNIQUE',
+                'CASCADE', 'RESTRICT', 'MERGE', 'UPSERT', 'RETURNING'
+            ];
+            const functions = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'ROUND', 'NOW', 'DATE', 'EXTRACT'];
+
+            // Escape HTML
+            let escaped = sql
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // Strings
+            escaped = escaped.replace(/('[^']*')/g, '<span class="sql-string">$1</span>');
+
+            // Numbers
+            escaped = escaped.replace(/\b(\d+)\b/g, '<span class="sql-number">$1</span>');
+
+            // Functions
+            functions.forEach(fn => {
+                const reg = new RegExp(`\\b(${fn})\\s*\\(`, 'gi');
+                escaped = escaped.replace(reg, '<span class="sql-function">$1</span>(');
+            });
+
+            // Keywords
+            keywords.forEach(kw => {
+                const reg = new RegExp(`\\b(${kw})\\b`, 'gi');
+                escaped = escaped.replace(reg, '<span class="sql-keyword">$1</span>');
+            });
+
+            return escaped;
+        }
+
+        // Generate SQL API Call
+        async function generateSQL() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                showError("Please enter a question or instruction to generate SQL.");
+                promptInput.focus();
+                return;
+            }
+
+            hideError();
+            resultCard.classList.remove('visible');
+            generateBtn.classList.add('loading');
+            generateBtn.disabled = true;
+            btnLabel.textContent = "Synthesizing SQL...";
+
+            try {
+                const response = await fetch('/api/generate-sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        schema: schemaEditor.value,
+                        dialect: dialectSelect.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Failed to generate query');
+                }
+
+                if (data.success && data.sql) {
+                    rawSQL = data.sql;
+                    sqlDisplay.innerHTML = highlightSQL(data.sql);
+                    resultDialectTag.textContent = (data.dialect || dialectSelect.value).toUpperCase();
+                    
+                    const tables = data.tables_used || [];
+                    resultTablesTag.textContent = tables.length > 0 ? `Tables: ${tables.join(', ')}` : "Tables: schema";
+                    explanationText.textContent = data.explanation || "No explanation provided.";
+
+                    resultCard.classList.add('visible');
+
+                    // Add to history
+                    history.unshift({
+                        id: Date.now().toString(),
+                        prompt: prompt,
+                        sql: data.sql,
+                        dialect: data.dialect || dialectSelect.value,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+                    if (history.length > 20) history.pop();
+                    saveHistory();
+
+                    // Smooth scroll to result
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    throw new Error(data.explanation || data.message || "Model could not produce valid SQL for this prompt.");
+                }
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                generateBtn.classList.remove('loading');
+                generateBtn.disabled = false;
+                btnLabel.textContent = "Generate SQL";
+            }
+        }
+
+        generateBtn.addEventListener('click', generateSQL);
+
+        // Copy SQL
+        copySqlBtn.addEventListener('click', async () => {
+            if (!rawSQL) return;
+            try {
+                await navigator.clipboard.writeText(rawSQL);
+                copySqlBtn.classList.add('copied');
+                copyBtnText.textContent = "Copied!";
+                setTimeout(() => {
+                    copySqlBtn.classList.remove('copied');
+                    copyBtnText.textContent = "Copy SQL";
+                }, 2000);
+            } catch (e) {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = rawSQL;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                copyBtnText.textContent = "Copied!";
+                setTimeout(() => copyBtnText.textContent = "Copy SQL", 2000);
+            }
+        });
+
+        // Download SQL
+        downloadSqlBtn.addEventListener('click', () => {
+            if (!rawSQL) return;
+            const blob = new Blob([rawSQL], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `query_${dialectSelect.value}_${Date.now()}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Error Alerts
+        function showError(msg) {
+            errorMessageText.textContent = msg;
+            errorCard.classList.add('visible');
+        }
+
+        function hideError() {
+            errorCard.classList.remove('visible');
+        }
+
+        // History Modal Logic
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<p class="empty-history-text">No previous queries generated yet.</p>';
+                return;
+            }
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                el.innerHTML = `
+                    <div class="history-item-top">
+                        <span class="history-prompt">${item.prompt.replace(/</g, '&lt;')}</span>
+                        <span class="history-time">${item.time} &bull; ${item.dialect.toUpperCase()}</span>
+                    </div>
+                    <div class="history-sql-snippet">${item.sql.replace(/</g, '&lt;')}</div>
+                `;
+                el.addEventListener('click', () => {
+                    promptInput.value = item.prompt;
+                    updateCharCounter();
+                    rawSQL = item.sql;
+                    sqlDisplay.innerHTML = highlightSQL(item.sql);
+                    resultDialectTag.textContent = item.dialect.toUpperCase();
+                    resultCard.classList.add('visible');
+                    historyModal.classList.remove('open');
+                    resultCard.scrollIntoView({ behavior: 'smooth' });
+                });
+                historyList.appendChild(el);
+            });
+        }
+
+        openHistoryBtn.addEventListener('click', () => {
+            renderHistory();
+            historyModal.classList.add('open');
+        });
+
+        closeHistoryBtn.addEventListener('click', () => historyModal.classList.remove('open'));
+        closeModalBottomBtn.addEventListener('click', () => historyModal.classList.remove('open'));
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) historyModal.classList.remove('open');
+        });
+
+        clearHistoryBtn.addEventListener('click', () => {
+            history = [];
+            saveHistory();
+            renderHistory();
+        });
+
+        // Initialize application on load
+        applyTemplate('ecommerce');
+    </script>
+</body>
+</html>
